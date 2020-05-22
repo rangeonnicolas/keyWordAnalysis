@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-__author__ = 'CKW7'
 
 import pandas as pd
 import numpy as np
@@ -31,8 +30,8 @@ class tfidf :
         # Preparation de la liste des stop words
         stop_words = self._get_stop_words_list(conf, True,data,language)
         # Preparation de la liste des stops stems
-        stop_stems_pre  = self._get_word_lists_from_file(language, conf['stopstems_pre_list_file'])
-        stop_stems_post = self._get_word_lists_from_file(language, conf['stopstems_post_list_file'])
+        stop_stems_pre  = self._get_word_lists_from_file(language, conf['stopstems_pre_list_file']) if 'stopstems_pre_list_file' in conf.keys() else []
+        stop_stems_post = self._get_word_lists_from_file(language, conf['stopstems_post_list_file']) if 'stopstems_post_list_file' in conf.keys() else []
 
         #######
         # NORMALISATION DU TEXTE
@@ -640,7 +639,7 @@ class tfidf :
     def _get_stop_words_list(self,conf,unique_language,data,language):
         SW = conf['spec_stopw']
         if unique_language and conf['use_traditionals_stopw']:
-            SW = SW + self._get_word_lists_from_file(language,conf['language_stopw_list_file'])
+            SW = SW + (self._get_word_lists_from_file(language,conf['language_stopw_list_file']) if 'language_stopw_list_file' in conf.keys() else [])
         #else : # non utilise
         #    SW = [SW + self._get_stop_words( lang, conf['language_stopw_list_file']) for lang in data["language"] ]         # TODO : non teste
         return SW
@@ -675,3 +674,39 @@ class tfidf :
 class textnorm:
     def norm_alphanum(self, string, additional= ""):
         return re.sub("[^\w"+ additional +"]", " ", string, flags= re.UNICODE)
+    
+    
+if __name__ == "__main__":
+    conf = {
+        'language': 'french',
+        'spec_stopw': [], #stop words spécifiques
+        'use_traditionals_stopw' : False, # sinon il faut remplir l aligne du dessous
+        'language_stopw_list_file': None, # cf ligne d'apres
+        #'stopstems_pre_list_file': , #  conf file contenant uniquement un dict: {'french': ['est','a'], 'english':[...]}
+        #'stopstems_post_list_file': , # Si pas de fichier, ne pas inclure la clé (ne pas mettre None)
+        "ngrams_analysis":False,
+        "nchar_min":3,
+        "nb_occurr_min":0, # Peut causer une ZeroDivisionError si trop élevé 
+        "stemming": True, 
+        "nb_kw_by_text":2
+    }
+    
+    texts = [
+        "tableau carton genou choux choux bol",
+        "tableau chaise carton genou choux choux bol plante plante",
+        "tableau chaise carton choux bol tapis plante",
+        "tableau chaise carton genou choux choux bol plante"
+    ]
+
+    data = pd.DataFrame({'id_doc': [str(a) for a in range(len(texts))], 'content':texts})
+
+    t = tfidf()
+
+    data.index = data.id_doc
+
+    for id_doc, words in t.tfidf(data,conf,"").items():
+        data.loc[id_doc,"kw"] = ",".join([word['word'] for i,word in words.items()])
+
+    print(data)
+
+
